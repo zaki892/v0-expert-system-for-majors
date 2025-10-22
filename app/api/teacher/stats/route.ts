@@ -4,11 +4,27 @@ import { type NextRequest, NextResponse } from "next/server"
 export async function GET(request: NextRequest) {
   try {
     // Ambil user ID dari header
-    const userId = request.headers.get("x-user-id")
+    const fetchStats = async () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}")
+    const response = await fetch("/api/teacher/stats", {
+      headers: { "x-user-id": user.id?.toString() },
+    })
 
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!response.ok) {
+      console.error("Stats fetch failed:", await response.text())
+      return
     }
+
+    const data = await response.json()
+    setStats(data)
+  } catch (error) {
+    console.error("Error fetching stats:", error)
+  } finally {
+    setLoading(false)
+  }
+}
+
 
     // Cek apakah user adalah teacher atau admin
     const user = await query("SELECT role FROM users WHERE id = $1", [Number(userId)])

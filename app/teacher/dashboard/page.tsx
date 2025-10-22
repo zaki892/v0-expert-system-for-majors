@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -32,16 +32,23 @@ export default function TeacherDashboard() {
     }
 
     setUserData(parsedUser)
-    fetchStats()
+    fetchStats(parsedUser.id)
   }, [router])
 
-  const fetchStats = async () => {
+  const fetchStats = async (userId: number) => {
     try {
-      const response = await fetch("/api/teacher/stats")
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data)
+      const response = await fetch("/api/teacher/stats", {
+        headers: { "x-user-id": userId.toString() },
+      })
+
+      if (!response.ok) {
+        const text = await response.text()
+        console.error("Stats fetch failed:", text)
+        return
       }
+
+      const data = await response.json()
+      setStats(data)
     } catch (error) {
       console.error("Error fetching stats:", error)
     } finally {
