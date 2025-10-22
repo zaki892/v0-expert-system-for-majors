@@ -3,31 +3,33 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
   try {
+    // Ambil user ID dari header
     const userId = request.headers.get("x-user-id")
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const user = await query("SELECT role FROM users WHERE id = $1", [Number.parseInt(userId)])
+    // Cek apakah user adalah teacher atau admin
+    const user = await query("SELECT role FROM users WHERE id = $1", [Number(userId)])
 
     if (user.length === 0 || (user[0].role !== "teacher" && user[0].role !== "admin")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Total students
+    // Hitung total siswa
     const totalStudents = await query("SELECT COUNT(*) as count FROM users WHERE role = 'student'")
 
-    // Total classes
+    // Hitung total kelas
     const totalClasses = await query("SELECT COUNT(*) as count FROM classes")
 
-    // Recent tests
+    // Ambil 10 hasil tes terbaru
     const recentTests = await query(`
       SELECT 
         tr.id,
-        u.name as studentName,
-        tr.completed_at as testDate,
-        m.name as topMajor
+        u.name AS studentName,
+        tr.completed_at AS testDate,
+        m.name AS topMajor
       FROM test_results tr
       JOIN users u ON tr.user_id = u.id
       LEFT JOIN recommendations r ON tr.id = r.test_result_id AND r.rank = 1
@@ -36,9 +38,10 @@ export async function GET(request: NextRequest) {
       LIMIT 10
     `)
 
+    // Pastikan hasilnya dikembalikan dalam format angka yang valid
     return NextResponse.json({
-      totalStudents: totalStudents[0]?.count || 0,
-      totalClasses: totalClasses[0]?.count || 0,
+      totalStudents: Number(totalStudents[0]?.count) || 0,
+      totalClasses: Number(totalClasses[0]?.count) || 0,
       recentTests: recentTests || [],
     })
   } catch (error) {
