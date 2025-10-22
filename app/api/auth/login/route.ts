@@ -10,7 +10,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email dan password harus diisi" }, { status: 400 })
     }
 
-    const users = await query("SELECT id, email, name, role FROM users WHERE email = $1", [email])
+    // Ambil semua data user, termasuk password
+    const users = await query("SELECT id, email, name, role, password FROM users WHERE email = $1", [email])
 
     if (users.length === 0) {
       return NextResponse.json({ error: "Email atau password salah" }, { status: 401 })
@@ -18,20 +19,28 @@ export async function POST(request: NextRequest) {
 
     const user = users[0]
 
-    // Verify password
-    const passwordHash = await query("SELECT password FROM users WHERE email = $1", [email])
-    if (!verifyPassword(password, passwordHash[0].password)) {
+    // Verifikasi password
+    const valid = await verifyPassword(password, user.password)
+    if (!valid) {
       return NextResponse.json({ error: "Email atau password salah" }, { status: 401 })
     }
 
-    if (role && user.role !== role) {
+    // Cek role
+    if (role && user.role.toLowerCase() !== role.toLowerCase()) {
       return NextResponse.json(
         { error: `Hanya pengguna dengan role ${role} yang dapat login di halaman ini` },
         { status: 403 },
       )
     }
 
-    const response = NextResponse.json(user)
+    // Login sukses
+    const response = NextResponse.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    })
+
     response.cookies.set("user_id", user.id.toString(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
